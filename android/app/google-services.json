@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "133974567795",
+    "project_id": "cisonesse-app",
+    "storage_bucket": "cisonesse-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:133974567795:android:6d8772b2608620a4fc7306",
+        "android_client_info": {
+          "package_name": "com.example.cisonesse_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_64aN2MyRJhq1vzbt2kCA40hlsLX8H_c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

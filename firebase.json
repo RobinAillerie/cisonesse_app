@@ -1,0 +1,43 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "cisonesse-app",
+          "appId": "1:133974567795:android:6d8772b2608620a4fc7306",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "cisonesse-app",
+          "configurations": {
+            "android": "1:133974567795:android:6d8772b2608620a4fc7306",
+            "ios": "1:133974567795:ios:347f45e645970ad6fc7306",
+            "macos": "1:133974567795:ios:347f45e645970ad6fc7306",
+            "web": "1:133974567795:web:db66981b98b31f82fc7306",
+            "windows": "1:133974567795:web:ce8418f57e5ae812fc7306"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "notifications",
+      "codebase": "notifications",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
+
+}
