@@ -54,7 +54,7 @@ class DiversDocsData {
           // ⚠️ FIX: ton path n’avait pas "assets/pdfs/..."
           PdfItem(
             title: "Procédure ascenseurs EPHAD",
-            assetPath: "assets/pdfs/ascenseurs_ephad/Procédure ascenseurs EPHAD.pptx.pdf",
+            assetPath: "assets/pdfs/ascenseurs_ephad/Procédure ascenseurs EPHAD.pptx",
           ),
         ],
       ),
@@ -64,6 +64,8 @@ class DiversDocsData {
         items: const [
           PdfItem(title: "Fiche mémo GAZ", assetPath: "assets/pdfs/supports_incendie/Fiche mémo GAZ.pdf"),
           PdfItem(title: "Rangement LSPCC", assetPath: "assets/pdfs/supports_incendie/Rangement LSPCC.pdf"),
+                    PdfItem(title: "Fiche mémo GAZ", assetPath: "assets/pdfs/supports_incendie/ODFFEN 2026 SDIS 40.pdf"),
+
         ],
       ),
       DocNode.category(

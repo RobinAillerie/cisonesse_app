@@ -9,11 +9,13 @@
 // - Tes PDFs doivent être bien déclarés dans pubspec.yaml (assets: - assets/pdfs/)
 // - Les chemins dans DiversDocsData doivent correspondre EXACTEMENT (majuscules/espaces/accents)
 
+// ignore_for_file: use_build_context_synchronously, control_flow_in_finally, deprecated_member_use
+
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'package:add_2_calendar/add_2_calendar.dart';
 import 'pages/vehicle_forms_registry.dart';
 import 'pages/ccf176_form.dart';
 import 'pages/ccf177_form.dart';
@@ -41,7 +43,6 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 
@@ -85,6 +86,26 @@ Future<void> handleNotificationNavigation(RemoteMessage message) async {
   }
 }
 
+
+Future<void> openPhoneCalendarReminder({
+  required String title,
+  required DateTime start,
+  DateTime? end,
+  String? description,
+  String? location,
+}) async {
+  final event = Event(
+    title: title,
+    description: description ?? '',
+    location: location ?? '',
+    startDate: start,
+    endDate: end ?? start.add(const Duration(hours: 1)),
+
+    // 🔥 ICI le rappel
+  );
+
+  await Add2Calendar.addEvent2Cal(event);
+}
 
 Future<void> subscribeToNotificationTopics() async {
   final messaging = FirebaseMessaging.instance;
@@ -319,6 +340,7 @@ class _LoginPageState extends State<LoginPage> {
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   bool loading = false;
+  bool _showPassword = false;
   String? error;
 
 
@@ -386,8 +408,22 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: passCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Mot de passe', border: OutlineInputBorder()),
+                    obscureText: !_showPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Mot de passe',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        tooltip: _showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe',
+                        icon: Icon(
+                          _showPassword ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _showPassword = !_showPassword;
+                          });
+                        },
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (error != null)
@@ -468,6 +504,7 @@ enum AppSection {
   retourInterVsav,
   sacPromptSecours,
   ticket,
+  habillementGestion,
 
   // Amicale
   amicaleOrganigramme,
@@ -687,6 +724,8 @@ class _AppShellState extends State<AppShell> {
         return "Infos diverses";
       case AppSection.diversHabillement:
         return "Habillement";
+      case AppSection.habillementGestion:
+        return "Gestion habillement";
 
       // Plans
       case AppSection.plansEphadANoste:
@@ -844,6 +883,8 @@ class _AppShellState extends State<AppShell> {
         return const _AssetsPdfsPage(title: 'Infos diverses', categoryTitle: 'Infos diverses');
       case AppSection.diversHabillement:
         return const _AssetsPdfsPage(title: 'Habillement', categoryTitle: 'Habillement');
+      case AppSection.habillementGestion:
+        return HabillementGestionPage(user: user);
 
       // ---------------------------
       // PLANS
@@ -1178,6 +1219,12 @@ class _AppDrawerState extends State<_AppDrawer> {
                                 item(AppSection.diversOrganigrammeCis, Icons.account_tree_rounded, 'Organigramme CIS'),
                                 item(AppSection.diversInfosDiverses, Icons.info_rounded, 'Infos diverses'),
                                 item(AppSection.diversHabillement, Icons.checkroom_rounded, 'Habillement'),
+                                if (canAccessHabillementGestion())
+                                  item(
+                                    AppSection.habillementGestion,
+                                    Icons.table_chart_rounded,
+                                    'Gestion habillement',
+                                  ),
                               ],
                             ),
                           if (showAmicale)
@@ -1641,7 +1688,7 @@ class _HomeDashboard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: vehicle,
+                      initialValue: vehicle,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Véhicule',
@@ -1702,7 +1749,7 @@ class _HomeDashboard extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: targetFormId.isEmpty ? null : targetFormId,
+                      initialValue: targetFormId.isEmpty ? null : targetFormId,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Formulaire à ouvrir',
@@ -2618,21 +2665,19 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                     final data = d.data();
                     final title = (data['title'] ?? '').toString();
                     final body = (data['body'] ?? '').toString();
-                    final imageBase64 = (data['imageBase64'] ?? '').toString();
+                    final legacyImageBase64 = (data['imageBase64'] ?? '').toString();
+
+                    final imagesBase64 = <String>[
+                      ...((data['imagesBase64'] is List)
+                          ? List<String>.from(data['imagesBase64'])
+                          : <String>[]),
+                      if (legacyImageBase64.isNotEmpty) legacyImageBase64,
+                    ].where((e) => e.trim().isNotEmpty).toSet().toList();
                     final important = (data['important'] == true);
 
                     DateTime? createdAt;
                     final ts = data['createdAt'];
                     if (ts is Timestamp) createdAt = ts.toDate();
-
-                    Uint8List? bytes;
-                    if (imageBase64.trim().isNotEmpty) {
-                      try {
-                        bytes = base64Decode(imageBase64);
-                      } catch (_) {
-                        bytes = null;
-                      }
-                    }
 
                     final headerRow = Row(
                       children: [
@@ -2668,22 +2713,50 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (bytes != null && bytes.isNotEmpty)
+                            if (imagesBase64.isNotEmpty) ...[
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
                                 child: AspectRatio(
                                   aspectRatio: 16 / 9,
-                                  child: Image.memory(
-                                    bytes,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => Container(
-                                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                      child: const Center(child: Icon(Icons.broken_image_rounded)),
-                                    ),
+                                  child: PageView.builder(
+                                    itemCount: imagesBase64.length,
+                                    itemBuilder: (context, index) {
+                                      Uint8List? imgBytes;
+
+                                      try {
+                                        imgBytes = base64Decode(imagesBase64[index]);
+                                      } catch (_) {
+                                        imgBytes = null;
+                                      }
+
+                                      if (imgBytes == null) {
+                                        return Container(
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          child: const Center(
+                                            child: Icon(Icons.broken_image_rounded),
+                                          ),
+                                        );
+                                      }
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => FullscreenImagePage(imageBytes: imgBytes!),
+                                            ),
+                                          );
+                                        },
+                                        child: Image.memory(
+                                          imgBytes,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
-                            if (bytes != null && bytes.isNotEmpty) const SizedBox(height: 10),
+                              const SizedBox(height: 10),
+                            ],
                             headerRow,
                             if (body.trim().isNotEmpty) ...[
                               const SizedBox(height: 6),
@@ -2738,6 +2811,36 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   }
 }
 
+class FullscreenImagePage extends StatelessWidget {
+  final Uint8List imageBytes;
+
+  const FullscreenImagePage({
+    super.key,
+    required this.imageBytes,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 1,
+          maxScale: 5,
+          child: Image.memory(
+            imageBytes,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Dialog création actu (Stateful + lifecycle propre)
 class _CreatePostDialog extends StatefulWidget {
   final String userUid;
@@ -2753,7 +2856,7 @@ class _CreatePostDialogState extends State<_CreatePostDialog> {
   late final TextEditingController titleCtrl;
   late final TextEditingController bodyCtrl;
 
-  Uint8List? pickedBytes;
+  final List<Uint8List> pickedImages = [];
   bool important = false;
 
   bool saving = false;
@@ -2767,8 +2870,6 @@ class _CreatePostDialogState extends State<_CreatePostDialog> {
     titleCtrl = TextEditingController();
     bodyCtrl = TextEditingController();
   }
-
-
 
   @override
   void dispose() {
@@ -2792,11 +2893,24 @@ class _CreatePostDialogState extends State<_CreatePostDialog> {
 
   Future<void> pick(ImageSource src) async {
     if (!mounted || closing || saving) return;
+
     final bytes = await widget.pickImageBytes(src);
+
     if (!mounted || closing) return;
+
     if (bytes != null && bytes.isNotEmpty) {
-      safeSet(() => pickedBytes = bytes);
+      safeSet(() {
+        pickedImages.add(bytes);
+      });
     }
+  }
+
+  void removeImage(int index) {
+    if (saving || closing) return;
+
+    safeSet(() {
+      pickedImages.removeAt(index);
+    });
   }
 
   Future<void> publish() async {
@@ -2811,23 +2925,25 @@ class _CreatePostDialogState extends State<_CreatePostDialog> {
       final title = titleCtrl.text.trim();
       final body = bodyCtrl.text.trim();
 
-      String imageBase64 = '';
-      if (pickedBytes != null && pickedBytes!.isNotEmpty) {
-        final b = pickedBytes!;
-        if (b.lengthInBytes > 850 * 1024) {
+      final imagesBase64 = <String>[];
+
+      for (final bytes in pickedImages) {
+        if (bytes.lengthInBytes > 850 * 1024) {
           safeSet(() {
-            error = "Image trop lourde. Essaie de recadrer ou une autre photo.";
+            error = "Une image est trop lourde. Essaie de recadrer ou une autre photo.";
           });
           safeSet(() => saving = false);
           return;
         }
-        imageBase64 = base64Encode(b);
+
+        imagesBase64.add(base64Encode(bytes));
       }
 
       await FirebaseFirestore.instance.collection('news_posts').add({
         'title': title,
         'body': body,
-        'imageBase64': imageBase64, // ✅ String (jamais null)
+        'imageBase64': imagesBase64.isNotEmpty ? imagesBase64.first : '',
+        'imagesBase64': imagesBase64,
         'important': important,
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': widget.userUid,
@@ -2899,23 +3015,62 @@ class _CreatePostDialogState extends State<_CreatePostDialog> {
               ],
             ),
             const SizedBox(height: 10),
-            if (pickedBytes != null && pickedBytes!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Image.memory(
-                    pickedBytes!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      child: const Center(child: Icon(Icons.broken_image_rounded)),
-                    ),
-                  ),
+            if (pickedImages.isNotEmpty)
+              SizedBox(
+                height: 120,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: pickedImages.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final bytes = pickedImages[index];
+
+                    return Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: Image.memory(
+                              bytes,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                child: const Center(child: Icon(Icons.broken_image_rounded)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: Material(
+                            color: Colors.black54,
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => removeImage(index),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               )
             else
-              const Text('Ajoute une image (optionnel).', style: TextStyle(color: Colors.black54)),
+              const Text(
+                'Ajoute une ou plusieurs images (optionnel).',
+                style: TextStyle(color: Colors.black54),
+              ),
             const SizedBox(height: 10),
             if (error != null)
               Text(
@@ -3158,7 +3313,7 @@ class _DayEventsList extends StatelessWidget {
       return _InfoCard(title: dStr, message: 'Aucun événement ce jour-là.');
     }
 
-    DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+    DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
     return ListView.separated(
       itemCount: events.length + 1,
@@ -3177,9 +3332,9 @@ class _DayEventsList extends StatelessWidget {
         final e = events[i - 1];
 
         // ✅ Affichage intelligent pour événements multi-jours
-        final dayOnly = _dateOnly(day);
-        final startDay = _dateOnly(e.start);
-        final endDay = _dateOnly(e.end ?? e.start);
+        final dayOnly = dateOnly(day);
+        final startDay = dateOnly(e.start);
+        final endDay = dateOnly(e.end ?? e.start);
 
         String subtitle;
 
@@ -4215,15 +4370,65 @@ class _PdfHubPageState extends State<PdfHubPage> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                 child: ListTile(
                   leading: const Icon(Icons.picture_as_pdf_rounded),
-                  title: Text(t, style: const TextStyle(fontWeight: FontWeight.w900)),
-                  subtitle: Text(u, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(
+                    t,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        u,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+
+                      // ✅ TON BOUTON DOIT ÊTRE ICI
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                        label: const Text('Ajouter un rappel'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        onPressed: () async {
+                          final title = (data['title'] ?? 'Événement Cisonesse').toString();
+                          final description = (data['description'] ?? '').toString();
+                          final location = (data['location'] ?? '').toString();
+
+                          final rawDate = data['date'] ?? data['startAt'] ?? data['createdAt'];
+
+                          DateTime start;
+
+                          if (rawDate is Timestamp) {
+                            start = rawDate.toDate();
+                          } else if (rawDate is DateTime) {
+                            start = rawDate;
+                          } else {
+                            start = DateTime.now().add(const Duration(hours: 1));
+                          }
+
+                          await openPhoneCalendarReminder(
+                            title: title,
+                            start: start,
+                            description: description,
+                            location: location,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
                   trailing: const Icon(Icons.open_in_new_rounded),
+
                   onTap: () async {
                     final uri = Uri.tryParse(u);
                     if (uri == null) return;
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
-                ),
+                )
               );
             }),
           ],
@@ -4477,7 +4682,7 @@ class _FuelConsumptionFormPageState extends State<FuelConsumptionFormPage> {
           requiredField: true,
           hasError: submitted && controleur == null,
           child: DropdownButtonFormField<String>(
-            value: controleur,
+            initialValue: controleur,
             decoration: const InputDecoration(hintText: 'Sélectionner'),
             items: controleurs.map((e) => DropdownMenuItem<String>(value: e, child: Text(e))).toList(),
             onChanged: saving ? null : (v) => setState(() => controleur = v),
@@ -4503,7 +4708,7 @@ class _FuelConsumptionFormPageState extends State<FuelConsumptionFormPage> {
           requiredField: true,
           hasError: submitted && vehicle == null,
           child: DropdownButtonFormField<String>(
-            value: vehicle,
+            initialValue: vehicle,
             decoration: const InputDecoration(hintText: 'Sélectionner'),
             items: vehicles.map((e) => DropdownMenuItem<String>(value: e, child: Text(e))).toList(),
             onChanged: saving ? null : (v) => setState(() => vehicle = v),
@@ -4527,7 +4732,7 @@ class _FuelConsumptionFormPageState extends State<FuelConsumptionFormPage> {
           requiredField: true,
           hasError: submitted && carburant == null,
           child: DropdownButtonFormField<String>(
-            value: carburant,
+            initialValue: carburant,
             decoration: const InputDecoration(hintText: 'Sélectionner'),
             items: fuels.map((e) => DropdownMenuItem<String>(value: e, child: Text(e))).toList(),
             onChanged: saving ? null : (v) => setState(() => carburant = v),
@@ -4551,7 +4756,7 @@ class _FuelConsumptionFormPageState extends State<FuelConsumptionFormPage> {
           requiredField: true,
           hasError: submitted && ticket == null,
           child: DropdownButtonFormField<String>(
-            value: ticket,
+            initialValue: ticket,
             decoration: const InputDecoration(hintText: 'Sélectionner'),
             items: ticketValues.map((e) => DropdownMenuItem<String>(value: e, child: Text(e))).toList(),
             onChanged: saving ? null : (v) => setState(() => ticket = v),
@@ -5543,7 +5748,7 @@ class _MobilhomeReservationPageState extends State<MobilhomeReservationPage> {
           requiredField: true,
           hasError: submitted && selectedName == null,
           child: DropdownButtonFormField<String>(
-            value: selectedName,
+            initialValue: selectedName,
             decoration: const InputDecoration(hintText: 'Sélectionner'),
             items: membres
                 .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
@@ -5815,13 +6020,56 @@ class _MobilhomeReservationTile extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         subtitle: Text(subtitleParts.join(' • ')),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.chevron_right_rounded),
-            Text(
-              status,
-              style: const TextStyle(fontSize: 11),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.chevron_right_rounded),
+                Text(
+                  status,
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ],
+            ),
+            IconButton(
+              tooltip: 'Supprimer la réservation',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Supprimer la réservation ?'),
+                    content: const Text('Cette action est définitive.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Annuler'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Supprimer'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm != true) return;
+
+                await FirebaseFirestore.instance
+                    .collection('mobilhome_reservations')
+                    .doc(doc.id)
+                    .delete();
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Réservation supprimée.'),
+                    ),
+                  );
+                }
+              },
             ),
           ],
         ),
@@ -5899,6 +6147,419 @@ class MobilhomeReservationDetailPage extends StatelessWidget {
     );
   }
 }
+
+bool canAccessHabillementGestion([User? user]) {
+  const allowedEmails = {
+    'robin.aillerie@sdis40.fr',
+    'dominique.sanguina@sdis40.fr',
+    'nathalie.bellegarde@sdis40.fr',
+  };
+
+  final email = (user ?? FirebaseAuth.instance.currentUser)
+      ?.email
+      ?.trim()
+      .toLowerCase();
+
+  return email != null && allowedEmails.contains(email);
+}
+
+class HabillementGestionPage extends StatefulWidget {
+  final User user;
+
+  const HabillementGestionPage({super.key, required this.user});
+
+  @override
+  State<HabillementGestionPage> createState() => _HabillementGestionPageState();
+}
+
+class _HabillementGestionPageState extends State<HabillementGestionPage> {
+  bool importing = false;
+
+  CollectionReference<Map<String, dynamic>> get tablesRef =>
+      FirebaseFirestore.instance.collection('habillement_tables');
+
+  Future<void> importInitialHabillementData() async {
+    if (importing) return;
+    setState(() => importing = true);
+
+    try {
+      final raw = await rootBundle.loadString('assets/data/habillement_seed.json');
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final workbooks = List<Map<String, dynamic>>.from(decoded['workbooks'] as List);
+
+      final batch = FirebaseFirestore.instance.batch();
+      var count = 0;
+
+      for (final workbook in workbooks) {
+        final workbookKey = workbook['key'].toString();
+        final fileName = workbook['fileName'].toString();
+        final sheets = List<Map<String, dynamic>>.from(workbook['sheets'] as List);
+
+        for (final sheet in sheets) {
+          final sheetName = sheet['name'].toString();
+          final tableId = '${workbookKey}_${sheetName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}'.replaceAll(RegExp(r'_+'), '_').replaceAll(RegExp(r'^_|_$'), '');
+          final rows = List<List<dynamic>>.from(
+            (sheet['rows'] as List).map((row) => List<dynamic>.from(row as List)),
+          );
+
+          batch.set(tablesRef.doc(tableId), {
+            'title': sheetName,
+            'sourceFile': fileName,
+            'workbookKey': workbookKey,
+            'columnCount': sheet['columnCount'],
+            'rows': rows,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            'updatedBy': widget.user.uid,
+          }, SetOptions(merge: true));
+
+          count++;
+        }
+      }
+
+      await batch.commit();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$count tableaux habillement importés.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur import habillement : $e')),
+      );
+    } finally {
+      if (mounted) setState(() => importing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!canAccessHabillementGestion(widget.user)) {
+      return const _ErrorCard(
+        title: 'Accès refusé',
+        message: 'Cette section est réservée aux responsables habillement.',
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: tablesRef.orderBy('sourceFile').orderBy('title').snapshots(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return _ErrorCard(title: 'Erreur Firestore', message: '${snap.error}');
+        }
+
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snap.data!.docs;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Gestion habillement',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tableaux réservés aux responsables habillement. Les données sont modifiables directement dans l’app.',
+            ),
+            const SizedBox(height: 12),
+            if (docs.isEmpty)
+              FilledButton.icon(
+                onPressed: importing ? null : importInitialHabillementData,
+                icon: importing
+                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.upload_file_rounded),
+                label: Text(importing ? 'Import en cours...' : 'Importer les tableaux Excel'),
+              ),
+            if (docs.isNotEmpty)
+              ...docs.map((doc) {
+                final data = doc.data();
+                final title = (data['title'] ?? 'Tableau').toString();
+                final source = (data['sourceFile'] ?? '').toString();
+
+                return Card(
+                  elevation: 1.1,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  child: ListTile(
+                    leading: const Icon(Icons.checkroom_rounded),
+                    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                    subtitle: Text(source),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => HabillementTableEditorPage(
+                            tableId: doc.id,
+                            user: widget.user,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class HabillementTableEditorPage extends StatefulWidget {
+  final String tableId;
+  final User user;
+
+  const HabillementTableEditorPage({super.key, required this.tableId, required this.user});
+
+  @override
+  State<HabillementTableEditorPage> createState() => _HabillementTableEditorPageState();
+}
+
+class _HabillementTableEditorPageState extends State<HabillementTableEditorPage> {
+  bool saving = false;
+  List<List<String>> rows = [];
+  String title = '';
+  String sourceFile = '';
+  bool loaded = false;
+
+  DocumentReference<Map<String, dynamic>> get tableRef =>
+      FirebaseFirestore.instance.collection('habillement_tables').doc(widget.tableId);
+
+  @override
+  void initState() {
+    super.initState();
+    loadTable();
+  }
+
+  Future<void> loadTable() async {
+  try {
+    final doc = await tableRef.get();
+    final data = doc.data();
+
+    if (!mounted) return;
+
+    if (data == null) {
+      setState(() {
+        title = 'Tableau introuvable';
+        sourceFile = '';
+        rows = [];
+        loaded = true;
+      });
+      return;
+    }
+
+    final rawRows = List<dynamic>.from(data['rows'] ?? []);
+
+    final parsedRows = rawRows.map<List<String>>((row) {
+      if (row is Map && row['cells'] is List) {
+        return List<dynamic>.from(row['cells'] as List)
+            .map((cell) => cell?.toString() ?? '')
+            .toList();
+      }
+
+      if (row is List) {
+        return List<dynamic>.from(row)
+            .map((cell) => cell?.toString() ?? '')
+            .toList();
+      }
+
+      return <String>[];
+    }).toList();
+
+    setState(() {
+      title = (data['title'] ?? 'Tableau habillement').toString();
+      sourceFile = (data['sourceFile'] ?? '').toString();
+      rows = parsedRows;
+      loaded = true;
+    });
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      title = 'Erreur chargement';
+      sourceFile = '';
+      rows = [
+        ['Erreur', e.toString()],
+      ];
+      loaded = true;
+    });
+  }
+}
+
+  Future<void> saveTable() async {
+  if (saving) return;
+  setState(() => saving = true);
+
+  try {
+    await tableRef.set({
+      'rows': rows
+          .map((row) => {
+                'cells': row,
+              })
+          .toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedBy': widget.user.uid,
+      'updatedByEmail': widget.user.email ?? '',
+    }, SetOptions(merge: true));
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tableau enregistré.')),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur sauvegarde : $e')),
+    );
+  } finally {
+    if (mounted) setState(() => saving = false);
+  }
+}
+
+  void updateCell(int rowIndex, int colIndex, String value) {
+    rows[rowIndex][colIndex] = value;
+  }
+
+  void addRow() {
+    final colCount = rows.isEmpty ? 4 : rows.map((r) => r.length).reduce((a, b) => a > b ? a : b);
+    setState(() => rows.add(List.filled(colCount, '')));
+  }
+
+  void addColumn() {
+    setState(() {
+      for (final row in rows) {
+        row.add('');
+      }
+    });
+  }
+
+  void deleteRow(int index) {
+    setState(() => rows.removeAt(index));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!canAccessHabillementGestion(widget.user)) {
+      return const Scaffold(
+        body: Center(child: Text('Accès refusé')),
+      );
+    }
+
+    if (!loaded) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final maxCols = rows.isEmpty ? 0 : rows.map((r) => r.length).reduce((a, b) => a > b ? a : b);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(
+            tooltip: 'Ajouter une ligne',
+            onPressed: addRow,
+            icon: const Icon(Icons.playlist_add_rounded),
+          ),
+          IconButton(
+            tooltip: 'Ajouter une colonne',
+            onPressed: addColumn,
+            icon: const Icon(Icons.view_column_rounded),
+          ),
+          IconButton(
+            tooltip: 'Enregistrer',
+            onPressed: saving ? null : saveTable,
+            icon: saving
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.save_rounded),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Text(
+              sourceFile,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          Expanded(
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(12),
+                  child: Table(
+                    defaultColumnWidth: const FixedColumnWidth(165),
+                    border: TableBorder.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    children: [
+                      for (var r = 0; r < rows.length; r++)
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: r == 0
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : r == 1
+                                    ? Theme.of(context).colorScheme.secondaryContainer
+                                    : null,
+                          ),
+                          children: [
+                            for (var c = 0; c < maxCols; c++)
+                              Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: TextFormField(
+                                  initialValue: c < rows[r].length ? rows[r][c] : '',
+                                  maxLines: null,
+                                  minLines: 1,
+                                  style: TextStyle(
+                                    fontWeight: r <= 1 ? FontWeight.w800 : FontWeight.w500,
+                                    fontSize: r <= 1 ? 13 : 12,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    filled: true,
+                                    fillColor: Theme.of(context).colorScheme.surface,
+                                  ),
+                                  onChanged: (value) {
+                                    while (rows[r].length <= c) {
+                                      rows[r].add('');
+                                    }
+                                    updateCell(r, c, value);
+                                  },
+                                ),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: IconButton(
+                                tooltip: 'Supprimer la ligne',
+                                onPressed: r <= 1 ? null : () => deleteRow(r),
+                                icon: const Icon(Icons.delete_outline_rounded),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class RetourInterVsavPage extends StatelessWidget {
   final bool isAdmin;
@@ -6895,7 +7556,7 @@ class _RetourInterVsavFormPageState extends State<RetourInterVsavFormPage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: selectedController,
+                      initialValue: selectedController,
                       decoration: const InputDecoration(border: OutlineInputBorder()),
                       items: controllers
                           .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -6940,10 +7601,38 @@ class _RetourInterVsavFormPageState extends State<RetourInterVsavFormPage> {
                 const SizedBox(height: 10),
               ];
             }),
-            _VsavSimpleTextCard(
-              title: "Nombre dose SURFANIOS en stock *",
-              controller: surfaniosCtrl,
-              keyboardType: TextInputType.number,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Nombre dose SURFANIOS en stock *",
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          surfaniosCtrl.text = '+ de 10';
+                          setState(() {});
+                        },
+                        child: const Text('+ de 10'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          surfaniosCtrl.text = '- de 10';
+                          setState(() {});
+                        },
+                        child: const Text('- de 10'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             _VsavTextCommentCard(
               label: "COMMENTAIRE FINAL *",
@@ -7028,47 +7717,7 @@ class _VsavTextCommentCard extends StatelessWidget {
   }
 }
 
-class _VsavSimpleTextCard extends StatelessWidget {
-  final String title;
-  final TextEditingController controller;
-  final TextInputType keyboardType;
 
-  const _VsavSimpleTextCard({
-    required this.title,
-    required this.controller,
-    this.keyboardType = TextInputType.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Votre réponse",
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class SacPromptSecoursPage extends StatelessWidget {
   final bool isAdmin;
@@ -7748,7 +8397,7 @@ class _SacPromptSecoursFormPageState extends State<SacPromptSecoursFormPage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: selectedController,
+                      initialValue: selectedController,
                       decoration: const InputDecoration(border: OutlineInputBorder()),
                       items: controllers
                           .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -7973,7 +8622,7 @@ class _TicketCreatePageState extends State<TicketCreatePage>
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  value: ticketType,
+                  initialValue: ticketType,
                   decoration: const InputDecoration(
                     labelText: 'Type',
                     border: OutlineInputBorder(),

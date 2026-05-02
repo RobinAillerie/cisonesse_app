@@ -31,6 +31,7 @@ dependencies:
   share_plus: ^12.0.1
   excel: ^4.0.6
   flutter_local_notifications: ^17.0.0
+  add_2_calendar: ^3.0.1
 
 dev_dependencies:
   flutter_test:
@@ -49,6 +50,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/data/habillement_seed.json
     - assets/logo.PNG
     - assets/accueil.jpg
     - assets/pdfs/

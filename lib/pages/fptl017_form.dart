@@ -724,7 +724,7 @@ class _FPTL017FormPageState extends State<FPTL017FormPage> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: (controleurSelectionne != null && controleurSelectionne!.isNotEmpty)
+                    initialValue: (controleurSelectionne != null && controleurSelectionne!.isNotEmpty)
                         ? controleurSelectionne
                         : null,
                     decoration: const InputDecoration(border: OutlineInputBorder()),

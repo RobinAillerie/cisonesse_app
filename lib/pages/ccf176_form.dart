@@ -464,7 +464,7 @@ class _CCF176FormPageState extends State<CCF176FormPage> {
                   const Text("NOM(S) CONTRÔLEUR(S) *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: (controleur != null && controleur!.isNotEmpty) ? controleur : null,
+                    initialValue: (controleur != null && controleur!.isNotEmpty) ? controleur : null,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
                     items: CONTROLEURS.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     onChanged: (v) => setState(() => controleur = v),
