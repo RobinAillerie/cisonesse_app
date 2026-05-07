@@ -75,10 +75,10 @@ flutter:
     - assets/pdfs/plans_batiments/batiment_11/
     - assets/pdfs/plans_batiments/batiment_12/
     - assets/pdfs/plans_batiments/batiment_13/
-    - assets/pdfs/controle_pf_pei/
     - assets/pdfs/organigramme_cis/
     - assets/pdfs/infos_diverses/
     - assets/pdfs/habillement/
+    - assets/images/formulaires/
     - assets/pdfs/amicale/
     - assets/pdfs/amicale/mobilhommes/
     - assets/pdfs/astreintes/

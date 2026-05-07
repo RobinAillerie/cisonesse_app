@@ -298,17 +298,52 @@ class _RetourFdfCcf176FormPageState extends State<RetourFdfCcf176FormPage> {
               values: moteurAuxiliaire,
               onChanged: (r, v) => setState(() => moteurAuxiliaire[r] = v),
             ),
-            Card(
-              elevation: 2,
-              margin: const EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              child: CheckboxListTile(
-                value: photoPreFiltre,
-                onChanged: (v) => setState(() => photoPreFiltre = v ?? false),
-                title: const Text('PHOTO PRE FILTRE *', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Option 1'),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 10, bottom: 12),
+                  child: Text(
+                    'PHOTO PRE FILTRE *',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            'assets/images/formulaires/pre_filtre_ccf176.jpg',
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        CheckboxListTile(
+                          value: photoPreFiltre,
+                          onChanged: (v) =>
+                              setState(() => photoPreFiltre = v ?? false),
+                          title: const Text('Option 1'),
+                          controlAffinity: ListTileControlAffinity.leading,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             FormMatrix(
               title: 'EXTERIEUR',

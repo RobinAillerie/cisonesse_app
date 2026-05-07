@@ -164,14 +164,6 @@ class DiversDocsData {
       ),
 
       DocNode.category(
-        title: "Contrôle PF et PEI",
-        icon: Icons.plumbing_rounded,
-        items: const [
-          PdfItem(title: "Bilan contrôle PF 2024", assetPath: "assets/pdfs/controle_pf_pei/Bilan contrôle PF 2024 - Feuil1.pdf"),
-          PdfItem(title: "Bilan contrôle PF 2025", assetPath: "assets/pdfs/controle_pf_pei/Bilan contrôle PF 2025.pdf"),
-        ],
-      ),
-      DocNode.category(
         title: "Organigramme CIS",
         icon: Icons.account_tree_rounded,
         items: const [
