@@ -55,7 +55,7 @@ flutter:
     - assets/accueil.jpg
     - assets/pdfs/
     - assets/pdfs/materiel_vehicules/
-    - assets/pdfs/ascenseurs_ephad/
+    - assets/pdfs/ascenseurs_ephad/Procedure_ascenseurs_EPHAD.pdf
     - assets/pdfs/supports_incendie/
     - assets/pdfs/supports_suap/
     - assets/pdfs/supports_fdf/
@@ -78,7 +78,8 @@ flutter:
     - assets/pdfs/organigramme_cis/
     - assets/pdfs/infos_diverses/
     - assets/pdfs/habillement/
-    - assets/images/formulaires/
+    - assets/images/formulaires/pre_filtre_ccf176.jpg.jpg
+    - assets/images/formulaires/pre_filtre_ccf177.jpg.jpg
     - assets/pdfs/amicale/
     - assets/pdfs/amicale/mobilhommes/
     - assets/pdfs/astreintes/

@@ -324,7 +324,7 @@ class _RetourFdfCcf177FormPageState extends State<RetourFdfCcf177FormPage> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: Image.asset(
-                            'assets/images/formulaires/pre_filtre_ccf176.jpg',
+                            'assets/images/formulaires/pre_filtre_ccf177.jpg.jpg',
                             fit: BoxFit.cover,
                           ),
                         ),

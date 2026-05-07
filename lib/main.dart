@@ -526,7 +526,6 @@ enum AppSection {
   diversSupportsFdf,
   diversProcedureBalisage,
   diversAntaresThp700,
-  diversControlePfPei,
   diversOrganigrammeCis,
   diversInfosDiverses,
   diversHabillement,
@@ -716,8 +715,6 @@ class _AppShellState extends State<AppShell> {
         return "Procédure balisage";
       case AppSection.diversAntaresThp700:
         return "Antares et THP 700";
-      case AppSection.diversControlePfPei:
-        return "Contrôle PF et PEI";
       case AppSection.diversOrganigrammeCis:
         return "Organigramme CIS";
       case AppSection.diversInfosDiverses:
@@ -875,8 +872,6 @@ class _AppShellState extends State<AppShell> {
         return const _AssetsPdfsPage(title: 'Procédure balisage', categoryTitle: 'Procédure balisage');
       case AppSection.diversAntaresThp700:
         return const _AssetsPdfsPage(title: 'Antares et THP 700', categoryTitle: 'Antares et THP 700');
-      case AppSection.diversControlePfPei:
-        return const _AssetsPdfsPage(title: 'Contrôle PF et PEI', categoryTitle: 'Contrôle PF et PEI');
       case AppSection.diversOrganigrammeCis:
         return const _AssetsPdfsPage(title: 'Organigramme CIS', categoryTitle: 'Organigramme CIS');
       case AppSection.diversInfosDiverses:
@@ -1006,7 +1001,6 @@ class _AppDrawerState extends State<_AppDrawer> {
           'CAMPING',
           'EGLISE',
           'DOMAINE DE MALAGA.VANDAME',
-          'Contrôle PF et PEI',
           'Organigramme CIS',
           'Infos diverses',
           'Habillement',
@@ -1215,7 +1209,6 @@ class _AppDrawerState extends State<_AppDrawer> {
                                       ],
                                     ),
                                   ),
-                                item(AppSection.diversControlePfPei, Icons.plumbing_rounded, 'Contrôle PF et PEI'),
                                 item(AppSection.diversOrganigrammeCis, Icons.account_tree_rounded, 'Organigramme CIS'),
                                 item(AppSection.diversInfosDiverses, Icons.info_rounded, 'Infos diverses'),
                                 item(AppSection.diversHabillement, Icons.checkroom_rounded, 'Habillement'),

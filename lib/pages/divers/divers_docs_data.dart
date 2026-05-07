@@ -54,7 +54,7 @@ class DiversDocsData {
         items: const [
           PdfItem(
             title: "Procédure ascenseurs EPHAD",
-            assetPath: "assets/pdfs/ascenseurs_ephad/Procédure ascenseurs EPHAD.pptx.pdf",
+            assetPath: "assets/pdfs/ascenseurs_ephad/Procedure_ascenseurs_EPHAD.pdf",
           ),
         ],
       ),
