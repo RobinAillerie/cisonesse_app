@@ -3854,6 +3854,8 @@ class VehicleChecksMenu extends StatelessWidget {
     VehicleFormMeta(id: 'VID_MPI_MPE_LOT_PB', title: 'VID MPI MPE LOT PB', subtitle: 'Lot PB'),
     VehicleFormMeta(id: 'VLHR_095', title: 'VLHR 095', subtitle: 'MPF / Station pompage atelier'),
     VehicleFormMeta(id: 'VSAV_065', title: 'VSAV 065', subtitle: 'EB-449-BR'),
+    VehicleFormMeta(id: 'RETOUR_FDF_CCF_176', title: 'Retour FDF CCF 176', subtitle: 'Formulaire retour feu de forêt'),
+    VehicleFormMeta(id: 'RETOUR_FDF_CCF_177', title: 'Retour FDF CCF 177', subtitle: 'Formulaire retour feu de forêt'),
   ];
 
   @override
@@ -4022,6 +4024,8 @@ class AdminChecksByVehicle extends StatelessWidget {
     VehicleFormMeta(id: 'VID_MPI_MPE_LOT_PB', title: 'VID MPI MPE LOT PB', subtitle: ''),
     VehicleFormMeta(id: 'VLHR_095', title: 'VLHR 095', subtitle: ''),
     VehicleFormMeta(id: 'VSAV_065', title: 'VSAV 065', subtitle: ''),
+    VehicleFormMeta(id: 'RETOUR_FDF_CCF_176', title: 'Retour FDF CCF 176', subtitle: ''),
+    VehicleFormMeta(id: 'RETOUR_FDF_CCF_177', title: 'Retour FDF CCF 177', subtitle: ''),
   ];
 
   @override

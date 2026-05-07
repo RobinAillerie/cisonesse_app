@@ -7,6 +7,8 @@ import 'fptl017_form.dart';
 import 'vid_mpi_mpe_lot_pb_form.dart';
 import 'vlhr_form.dart';
 import 'vsav_form.dart';
+import 'retour_fdf_ccf176_form.dart';
+import 'retour_fdf_ccf177_form.dart';
 /// Registry central des formulaires véhicules.
 /// - Permet d'ajouter un nouveau formulaire en 1 ligne.
 /// - Si un formId n'est pas présent, l'app garde le placeholder.
@@ -18,6 +20,8 @@ class VehicleFormsRegistry {
     'VID_MPI_MPE_LOT_PB': (_) => const VidMpiMpeLotPbFormPage(),
     'VLHR_095': (_) => const VLHRFormPage(),
     'VSAV_065': (_) => const VSAVFormPage(),
+    'RETOUR_FDF_CCF_176': (_) => const RetourFdfCcf176FormPage(),
+    'RETOUR_FDF_CCF_177': (_) => const RetourFdfCcf177FormPage(),
     // Ajoute les suivants au fur et à mesure :
     // 'FPTL_017': (_) => const FPTL017FormPage(),
     // 'VID_MPI_MPE_LOT_PB': (_) => const VidMpiMpeLotPbFormPage(),
