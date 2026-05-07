@@ -7,21 +7,11 @@ import {getMessaging} from "firebase-admin/messaging";
 
 initializeApp();
 
-/**
- * Retourne une chaîne nettoyée ou une valeur par défaut.
- * @param {unknown} value Valeur à convertir.
- * @param {string} fallback Valeur de secours si vide.
- * @return {string} Texte nettoyé.
- */
 function cleanText(value: unknown, fallback: string): string {
   const s = String(value ?? "").trim();
   return s.length === 0 ? fallback : s;
 }
 
-
-/**
- * Notification lors d'un ajout d'événement agenda.
- */
 export const agendaNotification = onDocumentCreated(
   "events/{eventId}",
   async (event) => {
@@ -45,43 +35,47 @@ export const agendaNotification = onDocumentCreated(
         title,
         body,
       },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
+      },
     });
   }
 );
 
-/**
- * Notification lors d'activation ou modification d'un message épinglé.
- */
 export const pinnedMessageNotification = onDocumentUpdated(
   "app_settings/pinned_message",
   async (event) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();
+
     if (!before || !after) return;
 
     const wasActive = before.isActive === true;
     const isActive = after.isActive === true;
 
-    const beforeTitle = String(before.title ?? "").trim();
-    const afterTitle = String(after.title ?? "").trim();
-    const beforeBody = String(before.body ?? "").trim();
-    const afterBody = String(after.body ?? "").trim();
+    const beforeTitle = cleanText(before.title, "");
+    const afterTitle = cleanText(after.title, "");
+    const beforeBody = cleanText(before.body, "");
+    const afterBody = cleanText(after.body, "");
 
     const activatedNow = !wasActive && isActive;
-    const changedWhileActive = isActive &&
-      (beforeTitle !== afterTitle || beforeBody !== afterBody);
+    const changedWhileActive =
+      isActive && (beforeTitle !== afterTitle || beforeBody !== afterBody);
 
-    if (!activatedNow && !changedWhileActive) {
-      return;
-    }
+    if (!activatedNow && !changedWhileActive) return;
 
-    const notifTitle = afterTitle.length > 0 ?
-      afterTitle :
-      "Message important";
-
-    const notifBody = afterBody.length > 0 ?
-      afterBody :
-      "Un message épinglé a été publié.";
+    const notifTitle = cleanText(after.title, "Message important");
+    const notifBody = cleanText(
+      after.body,
+      "Un message épinglé a été publié."
+    );
 
     await getMessaging().send({
       topic: "utilisateurs",
@@ -91,16 +85,24 @@ export const pinnedMessageNotification = onDocumentUpdated(
       },
       data: {
         type: "pinned_message",
+        id: "pinned_message",
         title: notifTitle,
         body: notifBody,
+      },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
       },
     });
   }
 );
 
-/**
- * Notification lors d'une réservation mobil-home.
- */
 export const mobilhomeReservationNotification = onDocumentCreated(
   "mobilhome_reservations/{reservationId}",
   async (event) => {
@@ -116,9 +118,10 @@ export const mobilhomeReservationNotification = onDocumentCreated(
     const start = cleanText(record["startDate"], "");
     const end = cleanText(record["endDate"], "");
 
-    const body = start.length > 0 && end.length > 0 ?
-      `${name} a réservé du ${start} au ${end}.` :
-      `${name} a effectué une réservation.`;
+    const body =
+      start.length > 0 && end.length > 0
+        ? `${name} a réservé du ${start} au ${end}.`
+        : `${name} a effectué une réservation.`;
 
     await getMessaging().send({
       topic: "mobilhommes",
@@ -129,13 +132,20 @@ export const mobilhomeReservationNotification = onDocumentCreated(
       data: {
         type: "mobilhome_reservation",
       },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
+      },
     });
   }
 );
 
-/**
- * Notification lors d'un formulaire véhicule complété.
- */
 export const vehicleCheckNotification = onDocumentCreated(
   "vehicle_checks_submissions/{submissionId}",
   async (event) => {
@@ -156,10 +166,19 @@ export const vehicleCheckNotification = onDocumentCreated(
         type: "vehicle_check",
         formTitle,
       },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
+      },
     });
   }
 );
-
 
 export const ticketNotification = onDocumentCreated(
   "tickets/{ticketId}",
@@ -170,7 +189,10 @@ export const ticketNotification = onDocumentCreated(
     const record = data as Record<string, unknown>;
     const type = cleanText(record["type"], "Ticket");
     const title = cleanText(record["title"], "Nouveau ticket");
-    const createdByEmail = cleanText(record["createdByEmail"], "Utilisateur inconnu");
+    const createdByEmail = cleanText(
+      record["createdByEmail"],
+      "Utilisateur inconnu"
+    );
 
     await getMessaging().send({
       topic: "admins",
@@ -183,13 +205,20 @@ export const ticketNotification = onDocumentCreated(
         ticketType: type,
         ticketTitle: title,
       },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
+      },
     });
   }
 );
 
-/**
- * Notification lors d'un retour inter VSAV complété.
- */
 export const vsavReturnNotification = onDocumentCreated(
   "vsav_return_submissions/{submissionId}",
   async (event) => {
@@ -200,9 +229,10 @@ export const vsavReturnNotification = onDocumentCreated(
     const fullName = cleanText(record["fullName"], "Un utilisateur");
     const interventionNumber = cleanText(record["interventionNumber"], "");
 
-    const body = interventionNumber.length > 0 ?
-      `Retour Inter VSAV n°${interventionNumber} complété par ${fullName}.` :
-      `Retour Inter VSAV complété par ${fullName}.`;
+    const body =
+      interventionNumber.length > 0
+        ? `Retour Inter VSAV n°${interventionNumber} complété par ${fullName}.`
+        : `Retour Inter VSAV complété par ${fullName}.`;
 
     await getMessaging().send({
       topic: "suap",
@@ -213,13 +243,20 @@ export const vsavReturnNotification = onDocumentCreated(
       data: {
         type: "vsav_return",
       },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
+      },
     });
   }
 );
 
-/**
- * Notification lors d'un sac prompt secours complété.
- */
 export const promptSecoursNotification = onDocumentCreated(
   "prompt_secours_submissions/{submissionId}",
   async (event) => {
@@ -230,9 +267,10 @@ export const promptSecoursNotification = onDocumentCreated(
     const fullName = cleanText(record["fullName"], "Un utilisateur");
     const interventionNumber = cleanText(record["interventionNumber"], "");
 
-    const body = interventionNumber.length > 0 ?
-      `Sac Prompt Secours n°${interventionNumber} complété par ${fullName}.` :
-      `Sac Prompt Secours complété par ${fullName}.`;
+    const body =
+      interventionNumber.length > 0
+        ? `Sac Prompt Secours n°${interventionNumber} complété par ${fullName}.`
+        : `Sac Prompt Secours complété par ${fullName}.`;
 
     await getMessaging().send({
       topic: "suap",
@@ -242,6 +280,16 @@ export const promptSecoursNotification = onDocumentCreated(
       },
       data: {
         type: "prompt_secours",
+      },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
       },
     });
   }

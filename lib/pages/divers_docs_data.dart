@@ -54,7 +54,7 @@ class DiversDocsData {
           // ⚠️ FIX: ton path n’avait pas "assets/pdfs/..."
           PdfItem(
             title: "Procédure ascenseurs EPHAD",
-            assetPath: "assets/pdfs/ascenseurs_ephad/Procédure ascenseurs EPHAD.pptx",
+            assetPath: "assets/pdfs/ascenseurs_ephad/Procedure_ascenseurs_EPHAD.pdf"
           ),
         ],
       ),
